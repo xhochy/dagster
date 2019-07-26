@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "dagster-graphql"
+version = "0.5.4"
+description = "The GraphQL frontend to python dagster."
+authors = ["Elementl <hello@elementl.io>"]
+license = "Apache-2.0"
+homepage = "https://dagster.readthedocs.io/"
+repository = "https://github.com/dagster-io/dagster"
+documentation = "https://dagster.readthedocs.io/"
+classifiers = [
+    'License :: OSI Approved :: Apache Software License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 2.7',
+    'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
+]
+packages = [
+    {include = "dagster_graphql"}
+]
+
+[tool.poetry.dependencies]
+python = "~2.7 || ^3.5"
+
+dagster = { path = "../dagster" }
+
+graphene = ">=2.1.3"
+gevent-websocket = "0.10.1"
+gevent = "1.3.7"
+pyrsistent = ">=0.14.8"
+rx = "1.6.1"
+
+[tool.poetry.dev-dependencies]
+black = { version = "18.9b0", python = "^3.6" }
+docutils = "<0.15.1"  # https://sourceforge.net/p/docutils/bugs/370/
+nbsphinx = "0.4.2"
+pre-commit = "1.10.1"
+pylint = {version = "2.3.0", python = "^3.6"}
+pytest = "4.6.3"
+pytest-cov = "2.7.1"
+pytest-dependency = "0.4.0"
+pytest-runner = "5.1"
+recommonmark = "0.4.0"
+rope = "0.11"
+snapshottest = "0.5.0"
+tox = "3.6.1"
+twine = "1.11.0"
+
+[tool.poetry.scripts]
+dagster-graphql = "dagster_graphql.cli:main"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"

@@ -1,0 +1,29 @@
+Metadata-Version: 2.1
+Name: dagster
+Version: 0.5.4
+Summary: Dagster is an opinionated programming model for data pipelines.
+Home-page: https://dagster.readthedocs.io/
+License: Apache-2.0
+Author: Elementl
+Author-email: hello@elementl.io
+Requires-Python: >=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Requires-Dist: PyYAML (>=3.10,<5)
+Requires-Dist: click (>=6.7)
+Requires-Dist: coloredlogs (>=6.1)
+Requires-Dist: contextlib2 (>=0.5.4)
+Requires-Dist: enum34; python_version <= "3.4"
+Requires-Dist: funcsigs (==1.0.0)
+Requires-Dist: future (>=0.16.0,<0.17.0)
+Requires-Dist: graphviz (>=0.8.4)
+Requires-Dist: six (>=1.11.0)
+Requires-Dist: toposort (>=1.0)
+Project-URL: Documentation, https://dagster.readthedocs.io/
+Project-URL: Repository, https://github.com/dagster-io/dagster

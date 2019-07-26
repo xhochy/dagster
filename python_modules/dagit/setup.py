@@ -50,12 +50,6 @@ def _do_setup(name='dagit'):
         packages=find_packages(exclude=['dagit_tests']),
         include_package_data=True,
         install_requires=[
-            # standard python 2/3 compatability things
-            'enum-compat==0.0.2',
-            'future>=0.16.0, <0.17.0a0',
-            # pyyaml pinned for compatibility with docker-compose
-            'pyyaml==4.2b1',
-            # cli
             'click>=6.7',
             'dagster=={ver}'.format(ver=ver),
             'dagster-graphql=={ver}'.format(ver=ver),
