@@ -2,6 +2,7 @@ import os
 import zipfile
 from typing import List
 
+import pandas as pd
 import urllib3
 
 from dagster import solid
@@ -40,6 +41,29 @@ def _unzip_file(zipfile_path: str, target: str) -> str:
 
 
 @solid
-def unzip_files(_, file_names: List[str], source_dir: str, target_dir: str):
-    for file_name in file_names:
-        _unzip_file(os.path.join(source_dir, file_name), target_dir)
+def unzip_files(_, file_names: List[str], source_dir: str, target_dir: str) -> List[str]:
+    return [
+        _unzip_file(os.path.join(source_dir, file_name), target_dir) for file_name in file_names
+    ]
+
+
+@solid
+def consolidate_csv_files(
+    _, input_file_names: List[str], source_dir: str, expected_delimiter: str, target: str
+) -> str:
+    # There must be a header in all of these dataframes or pandas won't know how to concatinate dataframes.
+    dataset = pd.concat(
+        [
+            pd.read_csv(os.path.join(source_dir, file_name), sep=expected_delimiter, header=0)
+            for file_name in input_file_names
+        ]
+    )
+
+    dataset.to_csv(target, sep=',')
+    return target
+
+
+@solid(required_resource_keys={'bucket'})
+def upload_file_to_bucket(context, file_path: str):
+    if not context.resources.bucket.has_key(os.path.basename(file_path)):
+        context.resources.bucket.set_object(file_path)

@@ -1,6 +1,7 @@
 # pylint: disable=redefined-outer-name
 import os
 
+import pandas as pd
 import pytest
 from dagster_examples.bay_bikes.pipelines import download_csv_pipeline
 
@@ -25,6 +26,7 @@ def chunk_size():
 @pytest.fixture
 def pipeline_config_dict(file_names, base_url, chunk_size):
     return {
+        "resources": {"bucket": {"config": {"bucket_name": "test_bucket", "bucket_obj": ""}}},
         "solids": {
             "download_zipfiles_from_urls": {
                 "inputs": {
@@ -37,14 +39,22 @@ def pipeline_config_dict(file_names, base_url, chunk_size):
                 }
             },
             "unzip_files": {"inputs": {"source_dir": {"value": ""}, "target_dir": {"value": ""}}},
-        }
+            "consolidate_csv_files": {
+                "inputs": {
+                    "source_dir": {"value": ""},
+                    "target": {"value": ""},
+                    "expected_delimiter": {"value": ","},
+                }
+            },
+        },
     }
 
 
 def mock_unzip_csv(zipfile_path, target):
     target = '{}/{}'.format(target, zipfile_path.split('/')[-1].replace('.zip', ''))
     with open(target, 'w+') as fp:
-        fp.write('foo')
+        mock_data = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+        mock_data.to_csv(target)
     return target
 
 
@@ -57,6 +67,12 @@ def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
     # Setup tempdirs and configure input config dict
     download_target_directory = tmpdir.mkdir('zip_target')
     csv_target_directory = tmpdir.mkdir('csv_target')
+    final_csv = csv_target_directory.join('consolidated.csv')
+
+    # Setup fake bucket
+    test_bucket = tmpdir.mkdir("test_bucket")
+    pipeline_config_dict['resources']['bucket']['config']['bucket_obj'] = str(test_bucket)
+
     pipeline_config_dict['solids']['download_zipfiles_from_urls']['inputs']['target_dir'][
         'value'
     ] = str(download_target_directory)
@@ -67,9 +83,16 @@ def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
         csv_target_directory
     )
 
+    pipeline_config_dict['solids']['consolidate_csv_files']['inputs']['source_dir']['value'] = str(
+        download_target_directory
+    )
+    pipeline_config_dict['solids']['consolidate_csv_files']['inputs']['target']['value'] = str(
+        final_csv
+    )
+
     # execute tests
     result = execute_pipeline(download_csv_pipeline, environment_dict=pipeline_config_dict)
     target_files = set(os.listdir(csv_target_directory.strpath))
     assert result.success
-    assert len(target_files) == 3
-    assert all([target_file in target_files for target_file in target_files])
+    assert len(target_files) == 4
+    assert os.listdir(str(test_bucket)) == ['consolidated.csv']
