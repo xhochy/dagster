@@ -58,7 +58,6 @@ def consolidate_csv_files(
             for file_name in input_file_names
         ]
     )
-
     dataset.to_csv(target, sep=',')
     return target
 

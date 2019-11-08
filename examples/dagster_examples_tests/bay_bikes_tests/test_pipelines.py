@@ -52,9 +52,8 @@ def pipeline_config_dict(file_names, base_url, chunk_size):
 
 def mock_unzip_csv(zipfile_path, target):
     target = '{}/{}'.format(target, zipfile_path.split('/')[-1].replace('.zip', ''))
-    with open(target, 'w+') as fp:
-        mock_data = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
-        mock_data.to_csv(target)
+    mock_data = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    mock_data.to_csv(target)
     return target
 
 
@@ -95,4 +94,6 @@ def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
     target_files = set(os.listdir(csv_target_directory.strpath))
     assert result.success
     assert len(target_files) == 4
+    consolidated = pd.read_csv(os.path.join(str(test_bucket), 'consolidated.csv'))
+    assert list(consolidated.A) == [1, 2, 3, 1, 2, 3, 1, 2, 3]
     assert os.listdir(str(test_bucket)) == ['consolidated.csv']
