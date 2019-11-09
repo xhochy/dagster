@@ -3,7 +3,7 @@ from dagster_examples.bay_bikes.resources import LocalBucket
 
 def test_local_bucket_resource(tmpdir):
     tmp_file_to_upload = tmpdir.mkdir('files_to_upload').join('foo.txt')
-    with open(tmp_file_to_upload, 'w+') as tmp_fp:
+    with open(str(tmp_file_to_upload), 'w+') as tmp_fp:
         tmp_fp.write('hello')
     fake_bucket_directory = tmpdir.mkdir('bucket')
     bucket_resource = LocalBucket('fake_bucket', fake_bucket_directory)
