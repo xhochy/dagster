@@ -3,8 +3,7 @@ import zipfile
 from typing import List
 
 import pandas as pd
-from urllib3 import connection_from_url
-from urllib3.connectionpool import ConnectionPool
+import urllib3
 
 from dagster import solid
 
@@ -15,8 +14,9 @@ def _write_chunks_to_fp(response, output_fp, chunk_size):
             output_fp.write(chunk)
 
 
-def _download_zipfile_from_url(requestor, path: str, target: str, chunk_size=8192) -> str:
-    response = requestor.request('GET', path, preload_content=False)
+def _download_zipfile_from_url(url: str, target: str, chunk_size=8192) -> str:
+    http = urllib3.connection_from_url(url)
+    response = http.request('GET', url, preload_content=False)
     with open(target, 'wb+') as output_fp:
         response.raise_for_status()
         _write_chunks_to_fp(response, output_fp, chunk_size)
@@ -27,11 +27,10 @@ def _download_zipfile_from_url(requestor, path: str, target: str, chunk_size=819
 def download_zipfiles_from_urls(
     context, base_url: str, file_names: List[str], target_dir: str, chunk_size=8192
 ) -> List[str]:
-    requestor = connection_from_url(base_url)
     for file_name in file_names:
         context.log.info("About to download file from url: {}".format(os.path.join(base_url, file_name)))
         _download_zipfile_from_url(
-            requestor, file_name, os.path.join(target_dir, file_name), chunk_size
+            os.path.join(base_url, file_name), os.path.join(target_dir, file_name), chunk_size
         )
         context.log.info("complete")
     return file_names
