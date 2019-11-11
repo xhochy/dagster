@@ -15,7 +15,7 @@ def _write_chunks_to_fp(response, output_fp, chunk_size):
 
 
 def _download_zipfile_from_url(url: str, target: str, chunk_size=8192) -> str:
-    http = urllib3.connection_from_url(url)
+    http = urllib3.PoolManager()
     response = http.request('GET', url, preload_content=False)
     with open(target, 'wb+') as output_fp:
         response.raise_for_status()
