@@ -1,13 +1,12 @@
 import os
-
 from abc import ABCMeta, abstractmethod
-from dagster import Field, String, resource, check
-
 from shutil import copyfile
-from six import with_metaclass
 
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
+from six import with_metaclass
+
+from dagster import Field, String, check, resource
 
 
 class DagsterCloudResourceSDKException(Exception):

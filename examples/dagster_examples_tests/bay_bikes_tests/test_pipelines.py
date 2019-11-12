@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from dagster_examples.bay_bikes.pipelines import download_csv_pipeline
 
-from dagster import execute_pipeline, RunConfig
+from dagster import RunConfig, execute_pipeline
 
 
 @pytest.fixture

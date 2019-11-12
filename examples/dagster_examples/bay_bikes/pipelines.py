@@ -8,7 +8,6 @@ from .solids import (
     upload_file_to_bucket,
 )
 
-
 local_mode = ModeDefinition(name='local', resource_defs={'bucket': local_bucket_resource})
 
 

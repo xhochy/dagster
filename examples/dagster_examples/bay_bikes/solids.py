@@ -5,7 +5,7 @@ from typing import List
 import pandas as pd
 import requests
 
-from dagster import solid, Field, String
+from dagster import Field, String, solid
 
 
 def _write_chunks_to_fp(response, output_fp, chunk_size):
