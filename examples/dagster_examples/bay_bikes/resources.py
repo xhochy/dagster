@@ -3,13 +3,14 @@ import os
 from abc import ABCMeta, abstractmethod
 from dagster import Field, String, resource, check
 
+from shutil import copyfile
 from six import with_metaclass
 
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
 
-class DagsterCloudResourceSDKException(object):
+class DagsterCloudResourceSDKException(Exception):
 
     def __init__(self, inner_error):
         check.inst_param(inner_error, 'inner_error', Exception)
@@ -25,15 +26,15 @@ class AbstractBucket(with_metaclass(ABCMeta)):
 
     @abstractmethod
     def set_object(self, obj):
-        raise NotImplementedError("Override this function")
+        pass
 
     @abstractmethod
     def get_object(self, key):
-        raise NotImplementedError("Override this function")
+        pass
 
     @abstractmethod
     def has_key(self, key):
-        raise NotImplementedError("Override this function")
+        pass
 
 
 class LocalBucket(AbstractBucket):
@@ -45,14 +46,14 @@ class LocalBucket(AbstractBucket):
 
     def set_object(self, obj):
         destination = os.path.join(self.bucket_object, os.path.basename(obj))
-        os.symlink(obj, destination)
+        copyfile(obj, destination)
         return destination
 
     def get_object(self, key):
         return os.path.join(self.bucket_object, key)
 
     def has_key(self, key):
-        return os.path.islink(os.path.join(self.bucket_object, key))
+        return os.path.exists(os.path.join(self.bucket_object, key))
 
 
 class GoogleCloudStorageBucket(AbstractBucket):

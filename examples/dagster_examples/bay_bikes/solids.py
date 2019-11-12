@@ -1,3 +1,4 @@
+import csv
 import os
 import zipfile
 from typing import List
@@ -5,7 +6,7 @@ from typing import List
 import pandas as pd
 import requests
 
-from dagster import solid, Materialization
+from dagster import solid, Field, String, Int, Bool
 
 
 def _write_chunks_to_fp(response, output_fp, chunk_size):
@@ -23,12 +24,12 @@ def _download_zipfile_from_url(url: str, target: str, chunk_size=8192) -> str:
 
 @solid
 def download_zipfiles_from_urls(
-    context, base_url: str, file_names: List[str], target_dir: str, chunk_size=8192
+    _, base_url: str, file_names: List[str], target_dir: str, chunk_size=8192
 ) -> List[str]:
     for file_name in file_names:
         if not os.path.exists(os.path.join(target_dir, file_name)):
             _download_zipfile_from_url(
-                os.path.join(base_url, file_name), os.path.join(target_dir, file_name), chunk_size
+                "/".join([base_url, file_name]), os.path.join(target_dir, file_name), chunk_size
             )
     return file_names
 
@@ -46,18 +47,27 @@ def unzip_files(_, file_names: List[str], source_dir: str, target_dir: str) -> L
     ]
 
 
-@solid
+@solid(
+    config={
+        'delimiter': Field(
+            String,
+            default_value=',',
+            is_optional=True,
+            description=('A one-character string used to separate fields.'),
+        )
+    }
+)
 def consolidate_csv_files(
-    _, input_file_names: List[str], source_dir: str, expected_delimiter: str, target: str
+    context, input_file_names: List[str], source_dir: str, target: str
 ) -> str:
     # There must be a header in all of these dataframes or pandas won't know how to concatinate dataframes.
     dataset = pd.concat(
         [
-            pd.read_csv(os.path.join(source_dir, file_name), sep=expected_delimiter, header=0)
+            pd.read_csv(os.path.join(source_dir, file_name), sep=context.solid_config['delimiter'], header=0)
             for file_name in input_file_names
         ]
     )
-    dataset.to_csv(target, sep=',')
+    dataset.to_csv(target, sep=context.solid_config['delimiter'])
     return target
 
 

@@ -43,7 +43,6 @@ def pipeline_config_dict(file_names, base_url, chunk_size):
                 "inputs": {
                     "source_dir": {"value": ""},
                     "target": {"value": ""},
-                    "expected_delimiter": {"value": ","},
                 }
             },
         },
