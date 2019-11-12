@@ -3,21 +3,19 @@ import zipfile
 from typing import List
 
 import pandas as pd
-import urllib3
+import requests
 
-from dagster import solid
+from dagster import solid, Materialization
 
 
 def _write_chunks_to_fp(response, output_fp, chunk_size):
-    for chunk in response.stream(chunk_size):
+    for chunk in response.iter_content(chunk_size=chunk_size):
         if chunk:
             output_fp.write(chunk)
 
 
 def _download_zipfile_from_url(url: str, target: str, chunk_size=8192) -> str:
-    http = urllib3.PoolManager()
-    response = http.request('GET', url, preload_content=False)
-    with open(target, 'wb+') as output_fp:
+    with requests.get(url, stream=True) as response, open(target, 'wb+') as output_fp:
         response.raise_for_status()
         _write_chunks_to_fp(response, output_fp, chunk_size)
     return target
@@ -28,18 +26,17 @@ def download_zipfiles_from_urls(
     context, base_url: str, file_names: List[str], target_dir: str, chunk_size=8192
 ) -> List[str]:
     for file_name in file_names:
-        context.log.info("About to download file from url: {}".format(os.path.join(base_url, file_name)))
-        _download_zipfile_from_url(
-            os.path.join(base_url, file_name), os.path.join(target_dir, file_name), chunk_size
-        )
-        context.log.info("complete")
+        if not os.path.exists(os.path.join(target_dir, file_name)):
+            _download_zipfile_from_url(
+                os.path.join(base_url, file_name), os.path.join(target_dir, file_name), chunk_size
+            )
     return file_names
 
 
 def _unzip_file(zipfile_path: str, target: str) -> str:
     with zipfile.ZipFile(zipfile_path, 'r') as zip_fp:
         zip_fp.extractall(target)
-    return target
+        return zip_fp.namelist()[0]
 
 
 @solid

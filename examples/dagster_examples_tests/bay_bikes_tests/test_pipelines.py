@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from dagster_examples.bay_bikes.pipelines import download_csv_pipeline
 
-from dagster import execute_pipeline
+from dagster import execute_pipeline, RunConfig
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def mock_unzip_csv(zipfile_path, target):
 
 def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
     # Setup download mocks
-    mocker.patch('dagster_examples.bay_bikes.solids.urllib3')
+    mocker.patch('dagster_examples.bay_bikes.solids.requests')
     mocker.patch('dagster_examples.bay_bikes.solids._write_chunks_to_fp')
     mocker.patch('dagster_examples.bay_bikes.solids._unzip_file', side_effect=mock_unzip_csv)
 
@@ -90,7 +90,11 @@ def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
     )
 
     # execute tests
-    result = execute_pipeline(download_csv_pipeline, environment_dict=pipeline_config_dict)
+    result = execute_pipeline(
+        download_csv_pipeline,
+        environment_dict=pipeline_config_dict,
+        run_config=RunConfig(mode='local')
+    )
     target_files = set(os.listdir(csv_target_directory.strpath))
     assert result.success
     assert len(target_files) == 4

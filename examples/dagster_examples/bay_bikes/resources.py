@@ -1,6 +1,9 @@
 import os
 
+from abc import ABCMeta, abstractmethod
 from dagster import Field, String, resource, check
+
+from six import with_metaclass
 
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
@@ -14,23 +17,21 @@ class DagsterCloudResourceSDKException(object):
         self.message = 'Recevied error of type {}. Reason: {}.',format(type(inner_error), inner_error.message)
 
 
-
-
-
-
-class AbstractBucket(object):
+class AbstractBucket(with_metaclass(ABCMeta)):
     """
     Done so that we can create a consistent interface across
     different cloud storage abstractions (and local storage)
     """
 
-    # Went with this instead of ABC because of python cross-version compatibility issues
+    @abstractmethod
     def set_object(self, obj):
         raise NotImplementedError("Override this function")
 
+    @abstractmethod
     def get_object(self, key):
         raise NotImplementedError("Override this function")
 
+    @abstractmethod
     def has_key(self, key):
         raise NotImplementedError("Override this function")
 
