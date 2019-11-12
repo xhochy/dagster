@@ -1,4 +1,3 @@
-import csv
 import os
 import zipfile
 from typing import List
@@ -6,7 +5,7 @@ from typing import List
 import pandas as pd
 import requests
 
-from dagster import solid, Field, String, Int, Bool
+from dagster import solid, Field, String
 
 
 def _write_chunks_to_fp(response, output_fp, chunk_size):
@@ -63,7 +62,9 @@ def consolidate_csv_files(
     # There must be a header in all of these dataframes or pandas won't know how to concatinate dataframes.
     dataset = pd.concat(
         [
-            pd.read_csv(os.path.join(source_dir, file_name), sep=context.solid_config['delimiter'], header=0)
+            pd.read_csv(
+                os.path.join(source_dir, file_name), sep=context.solid_config['delimiter'], header=0
+            )
             for file_name in input_file_names
         ]
     )

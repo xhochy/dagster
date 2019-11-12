@@ -40,10 +40,7 @@ def pipeline_config_dict(file_names, base_url, chunk_size):
             },
             "unzip_files": {"inputs": {"source_dir": {"value": ""}, "target_dir": {"value": ""}}},
             "consolidate_csv_files": {
-                "inputs": {
-                    "source_dir": {"value": ""},
-                    "target": {"value": ""},
-                }
+                "inputs": {"source_dir": {"value": ""}, "target": {"value": ""}}
             },
         },
     }
@@ -92,7 +89,7 @@ def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
     result = execute_pipeline(
         download_csv_pipeline,
         environment_dict=pipeline_config_dict,
-        run_config=RunConfig(mode='local')
+        run_config=RunConfig(mode='local'),
     )
     target_files = set(os.listdir(csv_target_directory.strpath))
     assert result.success

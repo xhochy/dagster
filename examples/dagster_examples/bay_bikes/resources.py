@@ -11,11 +11,14 @@ from google.cloud.exceptions import NotFound
 
 
 class DagsterCloudResourceSDKException(Exception):
-
     def __init__(self, inner_error):
         check.inst_param(inner_error, 'inner_error', Exception)
         self.inner_error = inner_error
-        self.message = 'Recevied error of type {}. Reason: {}.',format(type(inner_error), inner_error.message)
+        message = (
+            'Recevied error of type {}. Reason: {}.',
+            format(type(inner_error), inner_error.message),
+        )
+        super(DagsterCloudResourceSDKException, self).__init__(message)
 
 
 class AbstractBucket(with_metaclass(ABCMeta)):
@@ -71,11 +74,11 @@ class GoogleCloudStorageBucket(AbstractBucket):
     def get_object(self, key):
         return self.bucket_obj.get_blob(key)
 
-    def set_object(self, key):
+    def set_object(self, obj):
         '''Given a filename on your filesystem upload it to the bucket'''
-        blob = self.bucket_obj.blob(key)
+        blob = self.bucket_obj.blob(obj)
         try:
-            blob.upload_from_filename(key)
+            blob.upload_from_filename(obj)
         except Exception as e:
             raise DagsterCloudResourceSDKException(e)
 

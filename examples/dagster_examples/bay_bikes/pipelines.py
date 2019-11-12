@@ -9,15 +9,11 @@ from .solids import (
 )
 
 
-local_mode = ModeDefinition(
-    name='local',
-    resource_defs={'bucket': local_bucket_resource}
-)
+local_mode = ModeDefinition(name='local', resource_defs={'bucket': local_bucket_resource})
 
 
 production_mode = ModeDefinition(
-    name='production',
-    resource_defs={'bucket': production_bucket_resource}
+    name='production', resource_defs={'bucket': production_bucket_resource}
 )
 
 
