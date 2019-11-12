@@ -1,4 +1,5 @@
 # pylint: disable=redefined-outer-name
+import json
 import os
 
 import pandas as pd
@@ -26,7 +27,7 @@ def chunk_size():
 @pytest.fixture
 def pipeline_config_dict(file_names, base_url, chunk_size):
     return {
-        "resources": {"bucket": {"config": {"bucket_name": "test_bucket", "bucket_obj": ""}}},
+        "resources": {"bucket": {"config": {"bucket_path": "/tmp/test_bucket"}}},
         "solids": {
             "download_zipfiles_from_urls": {
                 "inputs": {
@@ -66,7 +67,7 @@ def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
 
     # Setup fake bucket
     test_bucket = tmpdir.mkdir("test_bucket")
-    pipeline_config_dict['resources']['bucket']['config']['bucket_obj'] = str(test_bucket)
+    pipeline_config_dict['resources']['bucket']['config']['bucket_path'] = str(test_bucket)
 
     pipeline_config_dict['solids']['download_zipfiles_from_urls']['inputs']['target_dir'][
         'value'
@@ -94,6 +95,9 @@ def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
     target_files = set(os.listdir(csv_target_directory.strpath))
     assert result.success
     assert len(target_files) == 4
-    consolidated = pd.read_csv(os.path.join(str(test_bucket), 'consolidated.csv'))
+    with open(os.path.join(str(test_bucket), 'key_storage.json'), 'r') as storage_fp:
+        bucket_obj = json.load(storage_fp)['keys'][0]
+        assert bucket_obj == final_csv
+
+    consolidated = pd.read_csv(bucket_obj)
     assert list(consolidated.A) == [1, 2, 3, 1, 2, 3, 1, 2, 3]
-    assert os.listdir(str(test_bucket)) == ['consolidated.csv']

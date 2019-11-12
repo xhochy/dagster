@@ -1,12 +1,12 @@
+import json
 import os
 from abc import ABCMeta, abstractmethod
-from shutil import copyfile
 
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 from six import with_metaclass
 
-from dagster import Field, String, check, resource
+from dagster import Field, String, check, resource, check
 
 
 class DagsterCloudResourceSDKException(Exception):
@@ -42,20 +42,33 @@ class AbstractBucket(with_metaclass(ABCMeta)):
 class LocalBucket(AbstractBucket):
     """Uses a directory to mimic an cloud storage bucket"""
 
-    def __init__(self, bucket_name, bucket_obj):
-        self.bucket_name = bucket_name
-        self.bucket_object = bucket_obj
+    def __init__(self, bucket_path):
+        self.bucket_object = bucket_path
+        self.key_storage_path = os.path.join(bucket_path, 'key_storage.json')
+        os.makedirs(bucket_path, exist_ok=True)
+        with open(self.key_storage_path, 'w+') as fp:
+            json.dump({'keys': []}, fp)
 
-    def set_object(self, obj):
-        destination = os.path.join(self.bucket_object, os.path.basename(obj))
-        copyfile(obj, destination)
-        return destination
+    def set_object(self, key):
+        with open(self.key_storage_path, 'r') as key_storage_fp:
+            key_storage = json.load(key_storage_fp)
+        key_storage['keys'].append(key)
+        with open(self.key_storage_path, 'w') as key_storage_fp:
+            json.dump(key_storage, key_storage_fp)
 
     def get_object(self, key):
-        return os.path.join(self.bucket_object, key)
+        if not self.has_key(key):
+            raise Exception(
+                'Unable to find key {key_requested} in bucket of name {bucket}'.format(
+                    key_requested=key, bucket=self.bucket_object
+                )
+            )
+        return key
 
     def has_key(self, key):
-        return os.path.exists(os.path.join(self.bucket_object, key))
+        with open(self.key_storage_path, 'r') as key_storage_fp:
+            key_storage = json.load(key_storage_fp)
+            return key in key_storage['keys']
 
 
 class GoogleCloudStorageBucket(AbstractBucket):
@@ -85,11 +98,9 @@ class GoogleCloudStorageBucket(AbstractBucket):
         return True if self.bucket_obj.get_blob(key) else False
 
 
-@resource(config={'bucket_name': Field(String), 'bucket_obj': Field(String)})
+@resource(config={'bucket_path': Field(String)})
 def local_bucket_resource(context):
-    return LocalBucket(
-        context.resource_config['bucket_name'], context.resource_config['bucket_obj']
-    )
+    return LocalBucket(context.resource_config['bucket_path'])
 
 
 @resource(config={'bucket_name': Field(String)})
