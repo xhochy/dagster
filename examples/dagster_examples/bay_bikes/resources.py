@@ -88,9 +88,11 @@ class GoogleCloudStorageBucket(AbstractBucket):
 
     def set_object(self, key):
         '''Given a filename on your filesystem upload it to the bucket'''
-        blob = self.bucket_obj.blob(key)
+        # We are doing this because we don't want to upload the whole filesystem key to gcp
+        blob = self.bucket_obj.blob(os.path.basename(key))
         try:
-            blob.upload_from_filename(key)
+            with open(key, 'r') as fp_to_upload:
+                blob.upload_from_file(fp_to_upload)
         except Exception as e:
             raise DagsterCloudResourceSDKException(e)
 

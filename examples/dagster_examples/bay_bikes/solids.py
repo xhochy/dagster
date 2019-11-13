@@ -97,7 +97,5 @@ def consolidate_csv_files(
 
 @solid(required_resource_keys={'bucket'})
 def upload_file_to_bucket(context, file_path: str):
-    context.log("checking for file: {}".format(os.path.basename(file_path)))
-    context.log(context.resources.bucket.has_key(os.path.basename(file_path)))
     if not context.resources.bucket.has_key(os.path.basename(file_path)):
         context.resources.bucket.set_object(file_path)
