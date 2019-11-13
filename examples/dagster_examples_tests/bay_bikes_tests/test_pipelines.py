@@ -1,103 +1,31 @@
 # pylint: disable=redefined-outer-name
 import json
-import os
 
 import pandas as pd
-import pytest
-from dagster_examples.bay_bikes.pipelines import download_csv_pipeline
+from dagster_examples.bay_bikes.pipelines import monthly_bay_bike_etl_pipeline
 
-from dagster import RunConfig, execute_pipeline
-
-
-@pytest.fixture
-def file_names():
-    return ['foo', 'bar', 'baz']
-
-
-@pytest.fixture
-def base_url():
-    return 'http://foo.com'
-
-
-@pytest.fixture
-def chunk_size():
-    return 8192
-
-
-@pytest.fixture
-def pipeline_config_dict(file_names, base_url, chunk_size):
-    return {
-        "resources": {"bucket": {"config": {"bucket_path": "/tmp/test_bucket"}}},
-        "solids": {
-            "download_zipfiles_from_urls": {
-                "inputs": {
-                    "base_url": {"value": base_url},
-                    "chunk_size": {"value": chunk_size},
-                    "file_names": [
-                        {"value": "{}.zip".format(file_name)} for file_name in file_names
-                    ],
-                    "target_dir": {"value": ""},
-                }
-            },
-            "unzip_files": {"inputs": {"source_dir": {"value": ""}, "target_dir": {"value": ""}}},
-            "consolidate_csv_files": {
-                "inputs": {"source_dir": {"value": ""}, "target": {"value": ""}}
-            },
-        },
-    }
+from dagster import RunConfig, execute_pipeline_with_preset
 
 
 def mock_unzip_csv(zipfile_path, target):
     target = '{}/{}'.format(target, zipfile_path.split('/')[-1].replace('.zip', ''))
-    mock_data = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    mock_data = pd.DataFrame()
     mock_data.to_csv(target)
     return target
 
 
-def test_download_csv_locally_pipeline(mocker, tmpdir, pipeline_config_dict):
+def test_download_csv_locally_pipeline(mocker):
     # Setup download mocks
     mocker.patch('dagster_examples.bay_bikes.solids.requests')
     mocker.patch('dagster_examples.bay_bikes.solids._write_chunks_to_fp')
     mocker.patch('dagster_examples.bay_bikes.solids._unzip_file', side_effect=mock_unzip_csv)
 
-    # Setup tempdirs and configure input config dict
-    download_target_directory = tmpdir.mkdir('zip_target')
-    csv_target_directory = tmpdir.mkdir('csv_target')
-    final_csv = csv_target_directory.join('consolidated.csv')
-
-    # Setup fake bucket
-    test_bucket = tmpdir.mkdir("test_bucket")
-    pipeline_config_dict['resources']['bucket']['config']['bucket_path'] = str(test_bucket)
-
-    pipeline_config_dict['solids']['download_zipfiles_from_urls']['inputs']['target_dir'][
-        'value'
-    ] = str(download_target_directory)
-    pipeline_config_dict['solids']['unzip_files']['inputs']['source_dir']['value'] = str(
-        download_target_directory
-    )
-    pipeline_config_dict['solids']['unzip_files']['inputs']['target_dir']['value'] = str(
-        csv_target_directory
-    )
-
-    pipeline_config_dict['solids']['consolidate_csv_files']['inputs']['source_dir']['value'] = str(
-        download_target_directory
-    )
-    pipeline_config_dict['solids']['consolidate_csv_files']['inputs']['target']['value'] = str(
-        final_csv
-    )
-
     # execute tests
-    result = execute_pipeline(
-        download_csv_pipeline,
-        environment_dict=pipeline_config_dict,
-        run_config=RunConfig(mode='local'),
+    result = execute_pipeline_with_preset(
+        monthly_bay_bike_etl_pipeline, preset_name='dev', run_config=RunConfig(mode='local')
     )
-    target_files = set(os.listdir(csv_target_directory.strpath))
     assert result.success
-    assert len(target_files) == 4
-    with open(os.path.join(str(test_bucket), 'key_storage.json'), 'r') as storage_fp:
-        bucket_obj = json.load(storage_fp)['keys'][0]
-        assert bucket_obj == final_csv
-
-    consolidated = pd.read_csv(bucket_obj)
-    assert list(consolidated.A) == [1, 2, 3, 1, 2, 3, 1, 2, 3]
+    with open('/tmp/test_bucket/key_storage.json') as fp:
+        key_storage = json.load(fp)
+    assert len(key_storage['keys']) == 1
+    assert 'consolidated.csv' in key_storage['keys'][0]

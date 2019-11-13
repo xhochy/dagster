@@ -1,0 +1,17 @@
+solids:
+  consolidate_csv_files:
+    inputs:
+      source_dir:
+        value: csv_target
+      target_name:
+        value: consolidated.csv
+  download_zipfiles_from_urls:
+    inputs:
+      target_dir:
+        value: zip_target
+  unzip_files:
+    inputs:
+      source_dir:
+        value: zip_target
+      target_dir:
+        value: csv_target

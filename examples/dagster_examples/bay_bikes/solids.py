@@ -5,7 +5,7 @@ from typing import List
 import pandas as pd
 import requests
 
-from dagster import Field, String, solid
+from dagster import Field, Int, String, solid
 
 
 def _write_chunks_to_fp(response, output_fp, chunk_size):
@@ -21,14 +21,23 @@ def _download_zipfile_from_url(url: str, target: str, chunk_size=8192) -> str:
     return target
 
 
-@solid
+@solid(
+    config={'chunk_size': Field(Int, is_optional=True, default_value=8192)},
+    required_resource_keys={'volume'},
+)
 def download_zipfiles_from_urls(
-    _, base_url: str, file_names: List[str], target_dir: str, chunk_size=8192
+    context, base_url: str, file_names: List[str], target_dir: str
 ) -> List[str]:
+    # mount dirs onto volume
+    zipfile_location = os.path.join(context.resources.volume, target_dir)
+    if not os.path.exists(zipfile_location):
+        os.mkdir(zipfile_location)
     for file_name in file_names:
-        if not os.path.exists(os.path.join(target_dir, file_name)):
+        if not os.path.exists(os.path.join(zipfile_location, file_name)):
             _download_zipfile_from_url(
-                "/".join([base_url, file_name]), os.path.join(target_dir, file_name), chunk_size
+                "/".join([base_url, file_name]),
+                os.path.join(zipfile_location, file_name),
+                context.solid_config['chunk_size'],
             )
     return file_names
 
@@ -39,10 +48,16 @@ def _unzip_file(zipfile_path: str, target: str) -> str:
         return zip_fp.namelist()[0]
 
 
-@solid
-def unzip_files(_, file_names: List[str], source_dir: str, target_dir: str) -> List[str]:
+@solid(required_resource_keys={'volume'})
+def unzip_files(context, file_names: List[str], source_dir: str, target_dir: str) -> List[str]:
+    # mount dirs onto volume
+    zipfile_location = os.path.join(context.resources.volume, source_dir)
+    csv_location = os.path.join(context.resources.volume, target_dir)
+    if not os.path.exists(csv_location):
+        os.mkdir(csv_location)
     return [
-        _unzip_file(os.path.join(source_dir, file_name), target_dir) for file_name in file_names
+        _unzip_file(os.path.join(zipfile_location, file_name), csv_location)
+        for file_name in file_names
     ]
 
 
@@ -54,25 +69,35 @@ def unzip_files(_, file_names: List[str], source_dir: str, target_dir: str) -> L
             is_optional=True,
             description=('A one-character string used to separate fields.'),
         )
-    }
+    },
+    required_resource_keys={'volume'},
 )
 def consolidate_csv_files(
-    context, input_file_names: List[str], source_dir: str, target: str
+    context, input_file_names: List[str], source_dir: str, target_name: str
 ) -> str:
+    # mount dirs onto volume
+    csv_file_location = os.path.join(context.resources.volume, source_dir)
+    consolidated_csv_location = os.path.join(context.resources.volume, target_name)
+    if not os.path.exists(csv_file_location):
+        os.mkdir(csv_file_location)
     # There must be a header in all of these dataframes or pandas won't know how to concatinate dataframes.
     dataset = pd.concat(
         [
             pd.read_csv(
-                os.path.join(source_dir, file_name), sep=context.solid_config['delimiter'], header=0
+                os.path.join(csv_file_location, file_name),
+                sep=context.solid_config['delimiter'],
+                header=0,
             )
             for file_name in input_file_names
         ]
     )
-    dataset.to_csv(target, sep=context.solid_config['delimiter'])
-    return target
+    dataset.to_csv(consolidated_csv_location, sep=context.solid_config['delimiter'])
+    return consolidated_csv_location
 
 
 @solid(required_resource_keys={'bucket'})
 def upload_file_to_bucket(context, file_path: str):
+    context.log("checking for file: {}".format(os.path.basename(file_path)))
+    context.log(context.resources.bucket.has_key(os.path.basename(file_path)))
     if not context.resources.bucket.has_key(os.path.basename(file_path)):
         context.resources.bucket.set_object(file_path)

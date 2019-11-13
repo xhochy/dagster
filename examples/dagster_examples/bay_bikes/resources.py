@@ -6,7 +6,7 @@ from google.cloud import storage
 from google.cloud.exceptions import NotFound
 from six import with_metaclass
 
-from dagster import Field, String, check, resource, check
+from dagster import Field, String, check, resource, seven
 
 
 class DagsterCloudResourceSDKException(Exception):
@@ -27,7 +27,7 @@ class AbstractBucket(with_metaclass(ABCMeta)):
     """
 
     @abstractmethod
-    def set_object(self, obj):
+    def set_object(self, key):
         pass
 
     @abstractmethod
@@ -86,11 +86,11 @@ class GoogleCloudStorageBucket(AbstractBucket):
     def get_object(self, key):
         return self.bucket_obj.get_blob(key)
 
-    def set_object(self, obj):
+    def set_object(self, key):
         '''Given a filename on your filesystem upload it to the bucket'''
-        blob = self.bucket_obj.blob(obj)
+        blob = self.bucket_obj.blob(key)
         try:
-            blob.upload_from_filename(obj)
+            blob.upload_from_filename(key)
         except Exception as e:
             raise DagsterCloudResourceSDKException(e)
 
@@ -106,3 +106,17 @@ def local_bucket_resource(context):
 @resource(config={'bucket_name': Field(String)})
 def production_bucket_resource(context):
     return GoogleCloudStorageBucket(context.resource_config['bucket_name'])
+
+
+@resource
+def temporary_directory_mount(_):
+    with seven.TemporaryDirectory() as tmpdir_path:
+        yield tmpdir_path
+
+
+@resource(config={'mount_location': Field(String)})
+def mount(context):
+    mount_location = context.resource_config['mount_location']
+    if os.path.exists(mount_location):
+        return context.resource_config['mount_location']
+    raise NotADirectoryError("Cant mount files on this resource. Make sure it exists!")
