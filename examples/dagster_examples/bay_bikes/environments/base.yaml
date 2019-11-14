@@ -4,7 +4,7 @@ solids:
       source_dir:
         value: csv_target
       target_name:
-        value: consolidated.csv
+        value: main.csv
   download_zipfiles_from_urls:
     inputs:
       target_dir:
@@ -15,3 +15,7 @@ solids:
         value: zip_target
       target_dir:
         value: csv_target
+  upload_file_to_bucket:
+    inputs:
+      key:
+        value: main.csv

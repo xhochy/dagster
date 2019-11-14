@@ -27,5 +27,4 @@ def test_download_csv_locally_pipeline(mocker):
     assert result.success
     with open('/tmp/test_bucket/key_storage.json') as fp:
         key_storage = json.load(fp)
-    assert len(key_storage['keys']) == 1
-    assert 'consolidated.csv' in key_storage['keys'][0]
+    assert len(key_storage.items()) == 1

@@ -15,31 +15,31 @@ class DagsterCloudResourceSDKException(Exception):
         self.inner_error = inner_error
         message = (
             'Recevied error of type {}. Reason: {}.',
-            format(type(inner_error), inner_error.message),
+            format(type(inner_error), inner_error),
         )
         super(DagsterCloudResourceSDKException, self).__init__(message)
 
 
-class AbstractBucket(with_metaclass(ABCMeta)):
+class AbstractFileTransporter(with_metaclass(ABCMeta)):
     """
-    Done so that we can create a consistent interface across
-    different cloud storage abstractions (and local storage)
+    This is a class that moves data between your filesystem and an existing bucket on a cloud platform.
+
+    The logic for doing so is left to the child classes which implement this interface for their respective
+    cloud platforms.
+
+    TODO: Implement the download logic once you need this functionality.
     """
 
     @abstractmethod
-    def set_object(self, key):
+    def upload_file_to_bucket(self, path_to_file, key):
         pass
 
-    @abstractmethod
-    def get_object(self, key):
-        pass
-
-    @abstractmethod
-    def has_key(self, key):
-        pass
+    @staticmethod
+    def path_to_file_exists(path_to_file):
+        return os.path.exists(path_to_file)
 
 
-class LocalBucket(AbstractBucket):
+class LocalFileTransporter(AbstractFileTransporter):
     """Uses a directory to mimic an cloud storage bucket"""
 
     def __init__(self, bucket_path):
@@ -47,31 +47,17 @@ class LocalBucket(AbstractBucket):
         self.key_storage_path = os.path.join(bucket_path, 'key_storage.json')
         os.makedirs(bucket_path, exist_ok=True)
         with open(self.key_storage_path, 'w+') as fp:
-            json.dump({'keys': []}, fp)
+            json.dump({}, fp)
 
-    def set_object(self, key):
+    def upload_file_to_bucket(self, path_to_file, key):
         with open(self.key_storage_path, 'r') as key_storage_fp:
             key_storage = json.load(key_storage_fp)
-        key_storage['keys'].append(key)
+        key_storage[key] = path_to_file
         with open(self.key_storage_path, 'w') as key_storage_fp:
             json.dump(key_storage, key_storage_fp)
 
-    def get_object(self, key):
-        if not self.has_key(key):
-            raise Exception(
-                'Unable to find key {key_requested} in bucket of name {bucket}'.format(
-                    key_requested=key, bucket=self.bucket_object
-                )
-            )
-        return key
 
-    def has_key(self, key):
-        with open(self.key_storage_path, 'r') as key_storage_fp:
-            key_storage = json.load(key_storage_fp)
-            return key in key_storage['keys']
-
-
-class GoogleCloudStorageBucket(AbstractBucket):
+class GoogleCloudStorageFileTransporter(AbstractFileTransporter):
     """Uses google cloud storage sdk to upload/download objects"""
 
     def __init__(self, bucket_name):
@@ -83,31 +69,23 @@ class GoogleCloudStorageBucket(AbstractBucket):
         except NotFound as e:
             raise DagsterCloudResourceSDKException(e)
 
-    def get_object(self, key):
-        return self.bucket_obj.get_blob(key)
-
-    def set_object(self, key):
-        '''Given a filename on your filesystem upload it to the bucket'''
-        # We are doing this because we don't want to upload the whole filesystem key to gcp
-        blob = self.bucket_obj.blob(os.path.basename(key))
+    def upload_file_to_bucket(self, path_to_file, key):
+        blob = self.bucket_obj.blob(key)
         try:
-            with open(key, 'r') as fp_to_upload:
+            with open(path_to_file, 'r') as fp_to_upload:
                 blob.upload_from_file(fp_to_upload)
         except Exception as e:
             raise DagsterCloudResourceSDKException(e)
 
-    def has_key(self, key):
-        return True if self.bucket_obj.get_blob(key) else False
-
 
 @resource(config={'bucket_path': Field(String)})
-def local_bucket_resource(context):
-    return LocalBucket(context.resource_config['bucket_path'])
+def local_transporter(context):
+    return LocalFileTransporter(context.resource_config['bucket_path'])
 
 
 @resource(config={'bucket_name': Field(String)})
-def production_bucket_resource(context):
-    return GoogleCloudStorageBucket(context.resource_config['bucket_name'])
+def production_transporter(context):
+    return GoogleCloudStorageFileTransporter(context.resource_config['bucket_name'])
 
 
 @resource

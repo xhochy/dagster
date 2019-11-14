@@ -1,11 +1,6 @@
 from dagster import ModeDefinition, PresetDefinition, file_relative_path, pipeline
 
-from .resources import (
-    local_bucket_resource,
-    mount,
-    production_bucket_resource,
-    temporary_directory_mount,
-)
+from .resources import local_transporter, mount, production_transporter, temporary_directory_mount
 from .solids import (
     consolidate_csv_files,
     download_zipfiles_from_urls,
@@ -15,12 +10,12 @@ from .solids import (
 
 local_mode = ModeDefinition(
     name='local',
-    resource_defs={'bucket': local_bucket_resource, 'volume': temporary_directory_mount},
+    resource_defs={'transporter': local_transporter, 'volume': temporary_directory_mount},
 )
 
 
 production_mode = ModeDefinition(
-    name='production', resource_defs={'bucket': production_bucket_resource, 'volume': mount}
+    name='production', resource_defs={'transporter': production_transporter, 'volume': mount}
 )
 
 

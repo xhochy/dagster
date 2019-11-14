@@ -1,5 +1,5 @@
 resources:
-  bucket:
+  transporter:
     config:
       bucket_path: /tmp/test_bucket
 solids:
