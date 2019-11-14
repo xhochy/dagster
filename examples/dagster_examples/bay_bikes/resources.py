@@ -13,10 +13,7 @@ class DagsterCloudResourceSDKException(Exception):
     def __init__(self, inner_error):
         check.inst_param(inner_error, 'inner_error', Exception)
         self.inner_error = inner_error
-        message = (
-            'Recevied error of type {}. Reason: {}.',
-            format(type(inner_error), inner_error),
-        )
+        message = ('Recevied error of type {}. Reason: {}.', format(type(inner_error), inner_error))
         super(DagsterCloudResourceSDKException, self).__init__(message)
 
 
