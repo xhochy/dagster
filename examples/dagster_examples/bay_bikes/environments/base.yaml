@@ -15,7 +15,11 @@ solids:
         value: zip_target
       target_dir:
         value: csv_target
-  upload_file_to_bucket:
+  upload_consolidated_csv:
     inputs:
       key:
-        value: main.csv
+        value: trips.csv
+  upload_weather_report:
+    inputs:
+      key:
+        value: weather.csv

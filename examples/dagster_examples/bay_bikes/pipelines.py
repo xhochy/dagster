@@ -3,6 +3,7 @@ from dagster import ModeDefinition, PresetDefinition, file_relative_path, pipeli
 from .resources import local_transporter, mount, production_transporter, temporary_directory_mount
 from .solids import (
     consolidate_csv_files,
+    download_weather_report,
     download_zipfiles_from_urls,
     unzip_files,
     upload_file_to_bucket,
@@ -40,5 +41,22 @@ production_mode = ModeDefinition(
         ),
     ],
 )
-def monthly_bay_bike_etl_pipeline():
-    upload_file_to_bucket(consolidate_csv_files(unzip_files(download_zipfiles_from_urls())))
+def extract_monthly_bay_bike_pipeline():
+    upload_consolidated_csv = upload_file_to_bucket.alias('upload_consolidated_csv')
+    upload_consolidated_csv(consolidate_csv_files(unzip_files(download_zipfiles_from_urls())))
+
+
+@pipeline(
+    mode_defs=[local_mode, production_mode],
+    preset_defs=[
+        PresetDefinition.from_files(
+            'def',
+            environment_files=[
+                file_relative_path(__file__, 'environments/base.yaml')
+            ]
+        )
+    ]
+)
+def extract_daily_weather_data_pipeline():
+    upload_weather_report = upload_file_to_bucket.alias('upload_weather_report')
+    upload_weather_report(download_weather_report())
