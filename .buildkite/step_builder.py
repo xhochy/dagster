@@ -27,8 +27,8 @@ class BuildkiteQueue(Enum):
     '''
 
     DOCKER = "docker-p"
-    MICRO = "micro-p"
     MEDIUM = "medium-p"
+    WINDOWS = "windows-p"
     C4_2XLARGE = "c4-2xlarge-p"
 
     @classmethod
@@ -58,7 +58,7 @@ class StepBuilder:
     def _base_docker_settings(self):
         return {"shell": ["/bin/bash", "-xeuc"], "always-pull": True, "mount-ssh-agent": True}
 
-    def on_integration_image(self, ver, env=None):
+    def on_integration_image(self, ver, env=None, platform=None):
         if ver not in SupportedPythons:
             raise Exception(
                 'Unsupported python version for integration image {ver}'.format(ver=ver)
@@ -67,9 +67,11 @@ class StepBuilder:
         settings = self._base_docker_settings()
 
         # version like dagster/buildkite-integration:py3.7.3-v3
-        settings["image"] = "%s.dkr.ecr.us-west-1.amazonaws.com/buildkite-integration:py%s-%s" % (
+        platform = '-{}'.format(platform) if platform else ''
+        settings["image"] = "%s.dkr.ecr.us-west-1.amazonaws.com/buildkite-integration:py%s%s-%s" % (
             AWS_ACCOUNT_ID,
             ver,
+            platform,
             INTEGRATION_IMAGE_VERSION,
         )
 

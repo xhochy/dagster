@@ -4,7 +4,7 @@ import sys
 
 import yaml
 from defines import SupportedPython, SupportedPython3s, SupportedPythons
-from step_builder import StepBuilder
+from step_builder import BuildkiteQueue, StepBuilder
 
 SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -103,15 +103,22 @@ def wrap_with_docker_compose_steps(
     )
 
 
-def python_modules_tox_tests(directory):
+def python_modules_tox_tests(directory, queue=BuildkiteQueue.MEDIUM):
     label = directory.replace("/", "-")
     tests = []
     for version in SupportedPythons:
         coverage = ".coverage.{label}.{version}.$BUILDKITE_BUILD_ID".format(
             label=label, version=version
         )
+        if queue == BuildkiteQueue.WINDOWS:
+            name = "{label} tests ({ver}/win)".format(label=label, ver=TOX_MAP[version])
+            platform = 'windows'
+        else:
+            name = "{label} tests ({ver})".format(label=label, ver=TOX_MAP[version])
+            platform = None
+
         tests.append(
-            StepBuilder("{label} tests ({ver})".format(label=label, ver=TOX_MAP[version]))
+            StepBuilder(name)
             .run(
                 "pip install tox",
                 "eval $(ssh-agent)",
@@ -121,8 +128,11 @@ def python_modules_tox_tests(directory):
                 "buildkite-agent artifact upload {file}".format(file=coverage),
             )
             .on_integration_image(
-                version, ['AWS_DEFAULT_REGION', 'TWILIO_TEST_ACCOUNT_SID', 'TWILIO_TEST_AUTH_TOKEN']
+                version,
+                ['AWS_DEFAULT_REGION', 'TWILIO_TEST_ACCOUNT_SID', 'TWILIO_TEST_AUTH_TOKEN'],
+                platform,
             )
+            .on_queue(queue)
             .build()
         )
 
@@ -610,6 +620,7 @@ if __name__ == "__main__":
     steps += python_modules_tox_tests("dagster")
     steps += python_modules_tox_tests("dagster-graphql")
     steps += python_modules_tox_tests("dagstermill")
+    steps += python_modules_tox_tests("dagster", BuildkiteQueue.WINDOWS)
     steps += library_tests()
 
     steps += releasability_tests()

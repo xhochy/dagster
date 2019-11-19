@@ -5,6 +5,8 @@ set -e
 ROOT=$(git rev-parse --show-toplevel)
 pushd $ROOT/.buildkite/images/docker/
 
+set -e
+
 function cleanup {
     pyenv virtualenv-delete -f snapshot-reqs-2
     pyenv virtualenv-delete -f snapshot-reqs-3
@@ -23,6 +25,18 @@ find . -name '*.pyc' | xargs rm -rf
 
 eval "$(pyenv init -)"
 
+################################################################################
+#
+# Linux
+#
+################################################################################
+# Freeze python 2 deps
+pyenv virtualenv 2.7.15 snapshot-reqs-2
+pyenv activate snapshot-reqs-2
+pip install -U pip setuptools wheel
+make install_dev_python_modules
+pip freeze --exclude-editable | sed -e 's|sphinxcontrib-images|git+https://github.com/t-b/sphinxcontrib-images.git@c76b9c25efb249f9c5054adbb436455095c6d2f7#egg=sphinxcontrib-images|' > $ROOT/.buildkite/images/docker/linux/snapshot-reqs-2.txt
+
 # Freeze python 3 deps. Use 3.5.6 because 3.6+ will install black which is incompatible with < 3.6
 pyenv virtualenv 3.5.6 snapshot-reqs-3
 pyenv activate snapshot-reqs-3
@@ -30,13 +44,31 @@ pip install -U pip setuptools wheel
 make install_dev_python_modules
 
 # https://github.com/dagster-io/dagster/issues/1858
-pip freeze --exclude-editable | sed -e 's|sphinxcontrib-images|git+https://github.com/t-b/sphinxcontrib-images.git@c76b9c25efb249f9c5054adbb436455095c6d2f7#egg=sphinxcontrib-images|' > $ROOT/.buildkite/images/docker/snapshot-reqs-3.txt
+pip freeze --exclude-editable | sed -e 's|sphinxcontrib-images|git+https://github.com/t-b/sphinxcontrib-images.git@c76b9c25efb249f9c5054adbb436455095c6d2f7#egg=sphinxcontrib-images|' > $ROOT/.buildkite/images/docker/linux/snapshot-reqs-3.txt
+
+################################################################################
+#
+# Windows
+#
+################################################################################
 
 # Freeze python 2 deps
 pyenv virtualenv 2.7.15 snapshot-reqs-2
 pyenv activate snapshot-reqs-2
 pip install -U pip setuptools wheel
-make install_dev_python_modules
+pip install -e python_modules/dagster
+pip install -e python_modules/dagster-graphql
+pip install -e python_modules/dagit
+pip freeze --exclude-editable | sed -e 's|sphinxcontrib-images|git+https://github.com/t-b/sphinxcontrib-images.git@c76b9c25efb249f9c5054adbb436455095c6d2f7#egg=sphinxcontrib-images|' > $ROOT/.buildkite/images/docker/windows/snapshot-reqs-2.txt
+
+# Freeze python 3 deps
+pyenv virtualenv 3.5.6 snapshot-reqs-3
+pyenv activate snapshot-reqs-3
+pip install -U pip setuptools wheel
+
+pip install -e python_modules/dagster
+pip install -e python_modules/dagster-graphql
+pip install -e python_modules/dagit
 
 # https://github.com/dagster-io/dagster/issues/1858
-pip freeze --exclude-editable | sed -e 's|sphinxcontrib-images|git+https://github.com/t-b/sphinxcontrib-images.git@c76b9c25efb249f9c5054adbb436455095c6d2f7#egg=sphinxcontrib-images|' > $ROOT/.buildkite/images/docker/snapshot-reqs-2.txt
+pip freeze --exclude-editable | sed -e 's|sphinxcontrib-images|git+https://github.com/t-b/sphinxcontrib-images.git@c76b9c25efb249f9c5054adbb436455095c6d2f7#egg=sphinxcontrib-images|' > $ROOT/.buildkite/images/docker/windows/snapshot-reqs-3.txt
