@@ -9,9 +9,8 @@ $AWS_ACCOUNT_ID=$env:AWS_ACCOUNT_ID
 $IMAGE_VERSION="v6"
 
 foreach ($version in $VERSIONS) {
-    $name = ("{0}{1}" -f $version.substring(0,1), $version.substring(2,1))
-    docker tag "dagster/buildkite-integration:py${name}-windows-${IMAGE_VERSION}" `
-        "${AWS_ACCOUNT_ID}.dkr.ecr.us-west-1.amazonaws.com/buildkite-integration:py${name}-windows-${IMAGE_VERSION}"
+    docker tag "dagster/buildkite-integration:py${version}-windows-${IMAGE_VERSION}" `
+        "${AWS_ACCOUNT_ID}.dkr.ecr.us-west-1.amazonaws.com/buildkite-integration:py${version}-windows-${IMAGE_VERSION}"
 
-    docker push "${AWS_ACCOUNT_ID}.dkr.ecr.us-west-1.amazonaws.com/buildkite-integration:py${name}-windows-${IMAGE_VERSION}"
+    docker push "${AWS_ACCOUNT_ID}.dkr.ecr.us-west-1.amazonaws.com/buildkite-integration:py${version}-windows-${IMAGE_VERSION}"
 }
