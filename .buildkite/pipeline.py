@@ -3,7 +3,13 @@ import subprocess
 import sys
 
 import yaml
-from defines import SupportedPython, SupportedPython3s, SupportedPythons
+from defines import (
+    SupportedPython,
+    SupportedPython3s,
+    SupportedPythons,
+    WindowsSupportedPython,
+    WindowsSupportedPythons,
+)
 from step_builder import BuildkiteQueue, StepBuilder
 
 SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -16,6 +22,10 @@ TOX_MAP = {
     SupportedPython.V3_6: "py36",
     SupportedPython.V3_5: "py35",
     SupportedPython.V2_7: "py27",
+    WindowsSupportedPython.V3_7: "py37",
+    WindowsSupportedPython.V3_6: "py36",
+    WindowsSupportedPython.V3_5: "py35",
+    WindowsSupportedPython.V2_7: "py27",
 }
 
 # https://github.com/dagster-io/dagster/issues/1662
@@ -121,7 +131,6 @@ def python_modules_tox_tests(directory, queue=BuildkiteQueue.MEDIUM):
             StepBuilder(name)
             .run(
                 "pip install tox",
-                "eval $(ssh-agent)",
                 "cd python_modules/{directory}".format(directory=directory),
                 "tox -vv -e {ver}".format(ver=TOX_MAP[version]),
                 "mv .coverage {file}".format(file=coverage),
@@ -133,6 +142,36 @@ def python_modules_tox_tests(directory, queue=BuildkiteQueue.MEDIUM):
                 platform,
             )
             .on_queue(queue)
+            .build()
+        )
+
+    return tests
+
+
+def python_modules_windows_tox_tests(directory):
+    label = directory.replace("/", "-")
+    tests = []
+    for version in WindowsSupportedPythons:
+        coverage = ".coverage.{label}.{version}.$BUILDKITE_BUILD_ID".format(
+            label=label, version=version
+        )
+        name = "{label} tests ({ver}/win)".format(label=label, ver=TOX_MAP[version])
+
+        tests.append(
+            StepBuilder(name)
+            .run(
+                "pip install tox",
+                "cd python_modules/{directory}".format(directory=directory),
+                "tox -vv -e {ver}".format(ver=TOX_MAP[version]),
+                "mv .coverage {file}".format(file=coverage),
+                "buildkite-agent artifact upload {file}".format(file=coverage),
+            )
+            .on_integration_image(
+                version,
+                ['AWS_DEFAULT_REGION', 'TWILIO_TEST_ACCOUNT_SID', 'TWILIO_TEST_AUTH_TOKEN'],
+                'windows',
+            )
+            .on_queue(BuildkiteQueue.WINDOWS)
             .build()
         )
 
@@ -620,7 +659,7 @@ if __name__ == "__main__":
     steps += python_modules_tox_tests("dagster")
     steps += python_modules_tox_tests("dagster-graphql")
     steps += python_modules_tox_tests("dagstermill")
-    steps += python_modules_tox_tests("dagster", BuildkiteQueue.WINDOWS)
+    steps += python_modules_windows_tox_tests("dagster")
     steps += library_tests()
 
     steps += releasability_tests()

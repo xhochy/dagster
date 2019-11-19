@@ -2,7 +2,7 @@ import os
 import sys
 from enum import Enum
 
-from defines import SupportedPythons
+from defines import SupportedPythons, WindowsSupportedPythons
 
 SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -59,19 +59,25 @@ class StepBuilder:
         return {"shell": ["/bin/bash", "-xeuc"], "always-pull": True, "mount-ssh-agent": True}
 
     def on_integration_image(self, ver, env=None, platform=None):
-        if ver not in SupportedPythons:
+        # version like dagster/buildkite-integration:py3.7.3-v3
+        if platform and platform == 'windows':
+            platform_name = '-windows'
+            unsupported = ver not in WindowsSupportedPythons
+        else:
+            platform_name = ''
+            unsupported = ver not in SupportedPythons
+
+        if unsupported:
             raise Exception(
                 'Unsupported python version for integration image {ver}'.format(ver=ver)
             )
 
         settings = self._base_docker_settings()
 
-        # version like dagster/buildkite-integration:py3.7.3-v3
-        platform = '-{}'.format(platform) if platform else ''
         settings["image"] = "%s.dkr.ecr.us-west-1.amazonaws.com/buildkite-integration:py%s%s-%s" % (
             AWS_ACCOUNT_ID,
             ver,
-            platform,
+            platform_name,
             INTEGRATION_IMAGE_VERSION,
         )
 
